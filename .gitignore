@@ -1,0 +1,35 @@
+# --- FPGA / Vivado build outputs ---
+fpga/build/
+*.bit
+*.mcs
+*.dcp
+*.rpt
+*.ltx
+.Xil/
+clockInfo.txt
+vivado*.jou
+vivado*.log
+*.str
+
+# --- RISC-V program build artifacts ---
+*.hex
+*.elf
+*.bin
+*.o
+*.lss
+
+# --- cocotb / Verilator simulation ---
+sim_build*/
+tests/build/
+results.xml
+*.vcd
+*.fst
+*.vvp
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+.venv*/
+*.egg-info/
+.pytest_cache/
