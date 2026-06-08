@@ -49,11 +49,17 @@
 `define UART_CONTROL        32'h20000008  // Control register
 `define UART_BAUD           32'h2000000C  // Baud rate divisor
 
+// External DDR3 (via MIG). 256 MB device; window exposed at 0x80000000.
+`define DDR3_BASE           32'h80000000
+`define DDR3_SIZE           32'h10000000  // 256MB
+`define DDR3_END            32'h8FFFFFFF
+
 // Memory access helper macros
 `define IS_INSTR_MEM(addr)  ((addr) <= `INSTR_MEM_END)
 `define IS_TIMER_MEM(addr)  ((addr) >= `TIMER_BASE && (addr) <= `TIMER_END)
 `define IS_DATA_MEM(addr)   ((addr) >= `DATA_MEM_BASE && (addr) <= `DATA_MEM_END)
 `define IS_PERIPH_MEM(addr) ((addr) >= `PERIPH_BASE && (addr) <= `PERIPH_END)
 `define IS_UART_MEM(addr)   ((addr) >= `UART_BASE && (addr) <= `UART_END)
+`define IS_DDR3_MEM(addr)   ((addr) >= `DDR3_BASE && (addr) <= `DDR3_END)
 
 `endif // MEMORY_MAP_VH

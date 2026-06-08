@@ -1,5 +1,7 @@
 # --- FPGA / Vivado build outputs ---
 fpga/build/
+fpga/mig/gen/
+fpga/mig/*.log
 *.bit
 *.mcs
 *.dcp

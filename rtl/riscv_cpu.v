@@ -17,6 +17,9 @@ module riscv_cpu (
     // (synchronous fetch: the in-flight instruction must be held during a stall)
     output wire module_fetch_hold,
 
+    // External long-latency memory stall (e.g. DDR3 bridge); 0 when unused.
+    input wire ddr3_stall,
+
     // Interrupt inputs
     input wire timer_interrupt,
     input wire software_interrupt,
@@ -31,7 +34,7 @@ module riscv_cpu (
     wire load_use_stall;
     wire mem_read_stall;   // one extra cycle for the registered data read
 
-    assign pipeline_stall = load_use_stall || mem_read_stall;
+    assign pipeline_stall = load_use_stall || mem_read_stall || ddr3_stall;
     assign module_fetch_hold = pipeline_stall;
 
     // Assert for the load's first MEM cycle only; holds the front stages and
@@ -39,6 +42,11 @@ module riscv_cpu (
     reg mem_wait;
     always @(posedge clk) mem_wait <= rst ? 1'b0 : mem_read_stall;
     assign mem_read_stall = module_mem_rd_en && !mem_wait;
+
+    // Back-pressure applied to the MEM-stage registers: the single BRAM read
+    // cycle, plus any multi-cycle external (DDR3) access. Holds the load in MEM
+    // and bubbles MEM-WB until the data is actually available.
+    wire mem_hold = mem_read_stall || ddr3_stall;
 
     // Branch handling: use EX stage jump signal/address
     assign pc_inst0_j_signal = ex_inst0_jump_signal_out;
@@ -188,7 +196,7 @@ module riscv_cpu (
         .rs1_value_in(rf_inst0_rs1_value_out),
         .rs2_value_in(rf_inst0_rs2_value_out),
         .stall(pipeline_flush || load_use_stall), // bubble on flush / load-use
-        .hold(mem_read_stall),                    // back-pressure: hold during mem read latency
+        .hold(mem_hold),                          // back-pressure: hold during mem read latency
         .rs1_valid_out(id_ex_inst0_rs1_valid_out),
         .rs2_valid_out(id_ex_inst0_rs2_valid_out),
         .rd_valid_out(id_ex_inst0_rd_valid_out),
@@ -373,7 +381,7 @@ module riscv_cpu (
         .jump_addr_in(ex_inst0_jump_addr_out),
         .instr_id_in(id_ex_inst0_instr_id_out),
         .rd_valid_in(id_ex_inst0_rd_valid_out),
-        .hold(mem_read_stall),   // keep the load in MEM for the extra read cycle
+        .hold(mem_hold),   // keep the load in MEM until the read data is ready
         .rs1_addr_out(ex_mem_inst0_rs1_addr_out),
         .rs2_addr_out(ex_mem_inst0_rs2_addr_out),
         .rd_addr_out(ex_mem_inst0_rd_addr_out),
@@ -469,8 +477,8 @@ module riscv_cpu (
         .store_load_hazard(store_load_hazard),
         .store_data(forwarded_store_data),
 
-        // Bubble MEM-WB on the load's first MEM cycle (data not yet ready)
-        .bubble(mem_read_stall),
+        // Bubble MEM-WB while the data is not yet ready (BRAM latency or DDR3)
+        .bubble(mem_hold),
 
         // Outputs
         .rs1_addr_out(mem_wb_inst0_rs1_addr_out),

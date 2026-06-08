@@ -2,7 +2,7 @@
 # Usage: vivado -mode batch -source fpga/program_arty.tcl -tclargs <bitfile>
 
 set here [file normalize [file dirname [info script]]]
-set bit  [file normalize $here/build/arty_top.bit]
+set bit  [file normalize $here/build/arty_ddr3_top.bit]
 if {$argc > 0} { set bit [file normalize [lindex $argv 0]] }
 
 open_hw_manager

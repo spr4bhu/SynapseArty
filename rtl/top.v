@@ -15,6 +15,15 @@ module top #(
     // UART output
     output wire uart_tx,
 
+    // External DDR3 access port (driven only for the DDR3 region; tied off in sim).
+    output wire        ddr3_req,
+    output wire        ddr3_we,
+    output wire [27:0] ddr3_addr,
+    output wire [31:0] ddr3_wdata,
+    output wire [3:0]  ddr3_byte_enable,
+    input  wire [31:0] ddr3_rdata,
+    input  wire        ddr3_stall,
+
     // Optional debug outputs
     output wire [31:0] pc_debug,
     output wire [31:0] instr_debug
@@ -48,21 +57,31 @@ module top #(
     wire data_mem_access;
     wire timer_access;
     wire instr_mem_access;
-    
+    wire ddr3_access;
+
     // Use memory map macros for clean address decoding
     assign data_mem_access = `IS_DATA_MEM(data_mem_addr);
     assign timer_access = `IS_TIMER_MEM(data_mem_addr);
     assign uart_access = `IS_UART_MEM(data_mem_addr);
     assign instr_mem_access = `IS_INSTR_MEM(data_mem_addr);
-    
+    assign ddr3_access = `IS_DDR3_MEM(data_mem_addr);
+
     // Select the appropriate address for memory access
     assign data_mem_addr = cpu_mem_write_en ? cpu_mem_write_addr : cpu_mem_read_addr;
-    
+
     // Multiplex read data based on address
-    assign mem_read_data = timer_access ? timer_read_data : 
+    assign mem_read_data = timer_access ? timer_read_data :
                           data_mem_access ? unified_mem_read_data :
                           uart_access ? uart_read_data :
+                          ddr3_access ? ddr3_rdata :
                           instr_mem_access ? unified_mem_read_data : 32'h00000000;
+
+    // External DDR3 access port (offset within the DDR3 window).
+    assign ddr3_req         = (cpu_mem_read_en || cpu_mem_write_en) && ddr3_access;
+    assign ddr3_we          = cpu_mem_write_en && ddr3_access;
+    assign ddr3_addr        = data_mem_addr[27:0];   // offset within the 256MB window
+    assign ddr3_wdata       = cpu_mem_write_data;
+    assign ddr3_byte_enable = cpu_write_byte_enable;
     
     // Debug outputs
     assign pc_debug = cpu_pc_out;
@@ -88,7 +107,8 @@ module top #(
         .module_write_addr(cpu_mem_write_addr),
         .module_write_byte_enable(cpu_write_byte_enable),
         .module_load_type(cpu_load_type),
-        .module_fetch_hold(cpu_fetch_hold)
+        .module_fetch_hold(cpu_fetch_hold),
+        .ddr3_stall(ddr3_stall)
     );
 
     // Address translation for unified memory
